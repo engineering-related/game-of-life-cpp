@@ -1,107 +1,199 @@
-#include <cstdint>
+#include<iostream>
+#include <math.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <iostream>
-#include <string.h>
 
-// #define NDEBUG
+const unsigned int SCREEN_WIDTH = 1024;
+const unsigned int SCREEN_HEIGHT = 1024;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-  glViewport(0, 0, width, height);
-} 
+const unsigned short OPENGL_MAJOR_VERSION = 4;
+const unsigned short OPENGL_MINOR_VERSION = 6;
 
-const uint32_t width = 1600;
-const uint32_t height = 800;
+bool vSync = true;
 
-int main() {
-  // Initialize GLFW
-  glfwInit();
 
-  // Tell GLFW what version of OpenGL we are using
-  // In this case we are using OpenGL 3.3
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  // Tell GLFW we are using the CORE profile
-  // So that means we only have the modern functions
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  // glfwWindowHint(GLFW_SAMPLES, 4);
+GLfloat vertices[] =
+{
+	-1.0f, -1.0f , 0.0f, 0.0f, 0.0f,
+	-1.0f,  1.0f , 0.0f, 0.0f, 1.0f,
+	 1.0f,  1.0f , 0.0f, 1.0f, 1.0f,
+	 1.0f, -1.0f , 0.0f, 1.0f, 0.0f,
+};
 
-  // Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-  GLFWwindow *window =
-      glfwCreateWindow(width, height, "GOL", nullptr, nullptr);
-  // Error check if the window fails to create
-  if (window == nullptr) {
-    std::cout << "Failed to create GLFW window" << std::endl;
-    glfwTerminate();
-    return -1;
-  }
+GLuint indices[] =
+{
+	0, 2, 1,
+	0, 3, 2
+};
 
-  // Introduce the window into the current context
-  glfwMakeContextCurrent(window);
-  // Load GLAD so it configures OpenGL
-  gladLoadGL();
-  // Specify the viewport of OpenGL in the Window
-  // In this case the viewport goes from x = 0, y = 0, to x = 800, y = 800
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);  
 
-  // Enables the Depth Buffer
-  // glEnable(GL_DEPTH_TEST);
+const char* screenVertexShaderSource = R"(#version 460 core
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec2 uvs;
+out vec2 UVs;
+void main()
+{
+	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+	UVs = uvs;
+})";
+const char* screenFragmentShaderSource = R"(#version 460 core
+out vec4 FragColor;
+uniform sampler2D screen;
+in vec2 UVs;
+void main()
+{
+	FragColor = texture(screen, UVs);
+})";
+const char* screenComputeShaderSource = R"(#version 460 core
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D screen;
+void main()
+{
+	vec4 pixel = vec4(0.075, 0.133, 0.173, 1.0);
+	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+	
+	ivec2 dims = imageSize(screen);
+	float x = -(float(pixel_coords.x * 2 - dims.x) / dims.x); // transforms to [-1.0, 1.0]
+	float y = -(float(pixel_coords.y * 2 - dims.y) / dims.y); // transforms to [-1.0, 1.0]
+	float fov = 90.0;
+	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
+	vec3 ray_o = vec3(x, y, 0.0);
+	vec3 ray_d = normalize(ray_o - cam_o);
+	vec3 sphere_c = vec3(0.0, 0.0, -5.0);
+	float sphere_r = 1.0;
+	vec3 o_c = ray_o - sphere_c;
+	float b = dot(ray_d, o_c);
+	float c = dot(o_c, o_c) - sphere_r * sphere_r;
+	float intersectionState = b * b - c;
+	vec3 intersection = ray_o + ray_d * (-b + sqrt(b * b - c));
+	if (intersectionState >= 0.0)
+	{
+		pixel = vec4((normalize(intersection - sphere_c) + 1.0) / 2.0, 1.0);
+	}
+	imageStore(screen, pixel_coords, pixel);
+})";
 
-  glfwSwapInterval(0); // Disable vSync
-  //TODO: Fix face culling (relative to the camera)
-  // Face culling
-  // glEnable(GL_CULL_FACE);
-  // glCullFace(GL_FRONT);
-  // glFrontFace(GL_CW);
-  // glEnable(GL_BLEND);
-  // glEnable(GL_POLYGON_OFFSET_FILL);
-  // glEnable(GL_MULTISAMPLE);  
 
-  // Delta time for clocking frames
-  float deltaTime = 0.0f;
-  float lastFrame = 0.0f;
+int main()
+{
+	glfwInit();
 
-  uint32_t counter = 0.0f;
-  float lastFrameCouner = 0.0f;
-  float timeDiffCounter = 0.0f;
-  
-  // glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR_VERSION);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-  // Main while loop
-  while (!glfwWindowShouldClose(window)) {
-    // Delta time
-    float currentFrame = glfwGetTime();
-    deltaTime = currentFrame - lastFrame;
-    timeDiffCounter = currentFrame - lastFrameCouner;
-    counter++;
+	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGL Game Of Life", NULL, NULL);
+	if (!window)
+	{
+		std::cout << "Failed to create the GLFW window\n";
+		glfwTerminate();
+	}
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(vSync);
 
-    if (timeDiffCounter >= 1.0f / 30.0f) {
-      std::string FPS = std::to_string((1.0 / timeDiffCounter) * counter);
-      std::string ms = std::to_string((timeDiffCounter / counter) * 1000);
-      std::string newTitle = "GOL - " + FPS + " FPS / " + ms + " ms";
-      glfwSetWindowTitle(window, newTitle.c_str());
-      lastFrameCouner = currentFrame;
-      counter = 0;  
-    }
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize OpenGL context" << std::endl;
+	}
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    lastFrame = currentFrame;
 
-    // Specify the color of the background
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    // Clean the back buffer and depth buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	GLuint VAO, VBO, EBO;
+	glCreateVertexArrays(1, &VAO);
+	glCreateBuffers(1, &VBO);
+	glCreateBuffers(1, &EBO);
 
-    // Swap the back buffer with the front buffer
-    glfwSwapBuffers(window);
-    // Take care of all GLFW events
-    glfwPollEvents();
-  }
+	glNamedBufferData(VBO, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glNamedBufferData(EBO, sizeof(indices), indices, GL_STATIC_DRAW);
 
-  // Delete window before ending the program
-  glfwDestroyWindow(window);
-  // Terminate GLFW before ending the program
-  glfwTerminate();
-  exit(0);
-  return 0;
+	glEnableVertexArrayAttrib(VAO, 0);
+	glVertexArrayAttribBinding(VAO, 0, 0);
+	glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
+
+	glEnableVertexArrayAttrib(VAO, 1);
+	glVertexArrayAttribBinding(VAO, 1, 0);
+	glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat));
+
+	glVertexArrayVertexBuffer(VAO, 0, VBO, 0, 5 * sizeof(GLfloat));
+	glVertexArrayElementBuffer(VAO, EBO);
+
+
+	GLuint screenTex;
+	glCreateTextures(GL_TEXTURE_2D, 1, &screenTex);
+	glTextureParameteri(screenTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
+	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+
+	GLuint screenVertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(screenVertexShader, 1, &screenVertexShaderSource, NULL);
+	glCompileShader(screenVertexShader);
+	GLuint screenFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(screenFragmentShader, 1, &screenFragmentShaderSource, NULL);
+	glCompileShader(screenFragmentShader);
+
+	GLuint screenShaderProgram = glCreateProgram();
+	glAttachShader(screenShaderProgram, screenVertexShader);
+	glAttachShader(screenShaderProgram, screenFragmentShader);
+	glLinkProgram(screenShaderProgram);
+
+	glDeleteShader(screenVertexShader);
+	glDeleteShader(screenFragmentShader);
+
+
+	GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+	glShaderSource(computeShader, 1, &screenComputeShaderSource, NULL);
+	glCompileShader(computeShader);
+
+	GLuint computeProgram = glCreateProgram();
+	glAttachShader(computeProgram, computeShader);
+	glLinkProgram(computeProgram);
+
+
+	int work_grp_cnt[3];
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
+	std::cout << "Max work groups per compute shader" << 
+		" x:" << work_grp_cnt[0] <<
+		" y:" << work_grp_cnt[1] <<
+		" z:" << work_grp_cnt[2] << "\n";
+
+	int work_grp_size[3];
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
+	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
+	std::cout << "Max work group sizes" <<
+		" x:" << work_grp_size[0] <<
+		" y:" << work_grp_size[1] <<
+		" z:" << work_grp_size[2] << "\n";
+
+	int work_grp_inv;
+	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+	std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
+
+
+	while (!glfwWindowShouldClose(window))
+	{
+		glUseProgram(computeProgram);
+		glDispatchCompute(ceil(SCREEN_WIDTH / 8), ceil(SCREEN_HEIGHT / 4), 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+		glUseProgram(screenShaderProgram);
+		glBindTextureUnit(0, screenTex);
+		glUniform1i(glGetUniformLocation(screenShaderProgram, "screen"), 0);
+		glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
 }

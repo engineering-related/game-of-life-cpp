@@ -23,7 +23,10 @@ file(COPY ${RESOURCE_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})
 
 # Include directories
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
+  ${CMAKE_CURRENT_SOURCE_DIR}/lib 
+  ${CMAKE_CURRENT_SOURCE_DIR}/lib/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Link link_libraries to target 
 target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ${OPENGL_LIBRARIES} glfw)
