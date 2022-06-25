@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# IDEA and bulid
+build/
+cmake-build-debug/
+out/
+.cache/
+.vs/
+.idea/
