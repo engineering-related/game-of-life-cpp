@@ -56,42 +56,40 @@ layout(rgba32f, binding = 1) readonly uniform image2D screen_old;
 #define DEAD_COLOR vec4(0.0f, 0.0f, 0.0f, 1.0f)  
 #define ALIVE_COLOR vec4(1.0f, 1.0f, 1.0f, 1.0f) 
 
+int cell(vec2 offset, vec2 coord)
+{
+	return int(imageLoad(screen_old, ivec2(coord - offset)).r);
+}
+
 void main()
 {
     // Cell Data
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
     vec4 pixel_color = imageLoad(screen_old, pixel_coords);
     ivec2 image_size = imageSize(screen_old);
+
+    int neighborCount = // Number of live neighboring cells
+	  cell(vec2(-1.0f, -1.0f), pixel_coords)
+	+ cell(vec2(-1.0f, 0.0), pixel_coords)
+	+ cell(vec2(-1.0f, 1.0f), pixel_coords)
+	+ cell(vec2(0.0, -1.0f), pixel_coords)
+	+ cell(vec2(0.0, 1.0f), pixel_coords)
+	+ cell(vec2(1.0f, -1.0f), pixel_coords)
+	+ cell(vec2(1.0f, 0.0), pixel_coords)
+	+ cell(vec2(1.0f, 1.0f), pixel_coords);
     
-    // Neighbors
-    int neigh_count_alive = 0;
-    for(int i = -1; i < 2; i++) 
-    {
-        for(int j = -1; j < 2; j++) 
-        {
-            if(i != 0 && j != 0) {
-                int col = (pixel_coords.x + i + image_size.x) % image_size.x;
-                int row = (pixel_coords.y + j + image_size.y) % image_size.y;
-
-                vec4 neigh_pixel_color = imageLoad(screen_old, ivec2(col, row));
-                if(neigh_pixel_color == ALIVE_COLOR) {
-                    neigh_count_alive++;                
-                }
-            }
-        }
-    }
-
-    // Rules
-    if(pixel_color == DEAD_COLOR && neigh_count_alive == 3) {
-        imageStore(screen, pixel_coords, ALIVE_COLOR);
-    }
-    else if(pixel_color == ALIVE_COLOR && (neigh_count_alive < 2 || neigh_count_alive > 3))
-    {
-        imageStore(screen, pixel_coords, DEAD_COLOR);
-    }
-    else {
-        imageStore(screen, pixel_coords, pixel_color);
-    }
+    if(neighborCount == 3) // Come to life
+	{
+      imageStore(screen, pixel_coords, ALIVE_COLOR); 
+	}
+	else if(neighborCount == 2) // Continue to live
+	{
+      imageStore(screen, pixel_coords, pixel_color); 
+	}
+	else // Die from underpopulation or overpopulation
+	{
+      imageStore(screen, pixel_coords, DEAD_COLOR); 
+	}
 })";
 
 int main()
@@ -157,6 +155,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // load and generate the texture
+    stbi_set_flip_vertically_on_load(true);
     int width, height, nrChannels;
     unsigned char *data = stbi_load("glider_gun.png", &width, &height, &nrChannels, 0);
     if (data)
@@ -221,7 +220,7 @@ int main()
 
     float lastTime = 0.0;
     float currentTime = 0.0;
-    float targetFrameRate = 15.0;
+    float targetFrameRate = 60.0f;
 
 	while (!glfwWindowShouldClose(window))
 	{
