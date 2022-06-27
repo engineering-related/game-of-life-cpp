@@ -12,8 +12,8 @@ const unsigned int SCREEN_HEIGHT = 1024;
 const unsigned short OPENGL_MAJOR_VERSION = 4;
 const unsigned short OPENGL_MINOR_VERSION = 6;
 
-bool vSync = true;
-
+bool vSync = false;
+float targetFrameRate = 144.0f;
 
 GLfloat vertices[] =
 {
@@ -220,7 +220,6 @@ int main()
 
     float lastTime = 0.0;
     float currentTime = 0.0;
-    float targetFrameRate = 60.0f;
 
 	while (!glfwWindowShouldClose(window))
 	{
