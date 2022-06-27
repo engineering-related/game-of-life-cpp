@@ -106,6 +106,7 @@ int main()
 	{
 		std::cout << "Failed to create the GLFW window\n";
 		glfwTerminate();
+        return -1;
 	}
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(vSync);
@@ -113,6 +114,7 @@ int main()
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize OpenGL context" << std::endl;
+        return -1;
 	}
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -169,6 +171,7 @@ int main()
     else
     {
         std::cout << "Failed to load texture" << std::endl;
+        return -1;
     }
     stbi_image_free(data);
 	glBindImageTexture(1, screenTexOld, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
