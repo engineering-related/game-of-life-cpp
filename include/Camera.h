@@ -23,6 +23,7 @@ private:
     float top;
     float near;
     float far;
+    const float cam_speed = 100.f;
 };
 
 

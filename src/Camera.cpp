@@ -44,7 +44,8 @@ void Camera::update(GLFWwindow *window, const float& deltaTime)
     else if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) 
     {
 
-        view = glm::translate(view, glm::vec3((mouse_start.x - mouseX) / (right - left) * deltaTime, -(mouse_start.y - mouseY) / (top - bottom) * deltaTime, 0.0f));
+        view = glm::translate(view, glm::vec3((mouse_start.x - mouseX) / (right - left) * deltaTime * cam_speed, 
+                                             -(mouse_start.y - mouseY) / (top - bottom) * deltaTime * cam_speed, 0.0f));
     }
     else 
     {
@@ -53,19 +54,19 @@ void Camera::update(GLFWwindow *window, const float& deltaTime)
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) 
     {   
-        left -= deltaTime;
-        right += deltaTime;
-        bottom -= deltaTime;
-        top += deltaTime;
+        left -= deltaTime * cam_speed;
+        right += deltaTime * cam_speed;
+        bottom -= deltaTime * cam_speed;
+        top += deltaTime * cam_speed;
         proj = glm::ortho(left, right, bottom, top, near, far);
         zoom_start = true;
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) 
     {   
-        left += deltaTime;
-        right -= deltaTime;
-        bottom += deltaTime;
-        top -= deltaTime;
+        left += deltaTime * cam_speed;
+        right -= deltaTime * cam_speed;
+        bottom += deltaTime * cam_speed;
+        top -= deltaTime * cam_speed;
         proj = glm::ortho(left, right, bottom, top, near, far);
     }
 

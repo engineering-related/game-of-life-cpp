@@ -228,7 +228,6 @@ int main()
     float lastTimeReal = 0.0f;
     float currentTime = 0.0f;
     float deltaTime = 0.0f;
-    float targetFrameRate = 144.0f;
     float targetFrameRateSim = 25.0f;
 
     Camera camera(0.0f, SCREEN_WIDTH, 0.0f, SCREEN_HEIGHT, -1.0f, 1.0f);
@@ -254,23 +253,21 @@ int main()
             lastTimeSim = currentTime;
         }
 
-        if(deltaTime >= 1.0 / targetFrameRate)
-        {
-            glUseProgram(screenShaderProgram);
-
-            glBindTextureUnit(0, screenTex);
-
-            glUniform1i(glGetUniformLocation(screenShaderProgram, "screen"), 0);
-
-            glBindVertexArray(VAO);
-            glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
-
-		    glfwSwapBuffers(window);
-            lastTimeReal = currentTime;
-        }
-
         camera.update(window, deltaTime);
         camera.matrix(screenShaderProgram, "u_ViewProj");
+
+        glUseProgram(screenShaderProgram);
+
+        glBindTextureUnit(0, screenTex);
+
+        glUniform1i(glGetUniformLocation(screenShaderProgram, "screen"), 0);
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
+
+        glfwSwapBuffers(window);
+        lastTimeReal = currentTime;
+
 		glfwPollEvents();
 	}
 
