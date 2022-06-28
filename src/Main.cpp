@@ -229,7 +229,7 @@ int main()
     float currentTime = 0.0f;
     float deltaTime = 0.0f;
     float targetFrameRate = 144.0f;
-    float targetFrameRateSim = 30.0f;
+    float targetFrameRateSim = 25.0f;
 
     Camera camera(0.0f, SCREEN_WIDTH, 0.0f, SCREEN_HEIGHT, -1.0f, 1.0f);
 
@@ -241,20 +241,21 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if(deltaTime >= 1.0 / targetFrameRate)
+        if(currentTime - lastTimeSim >= 1.0/ targetFrameRateSim)
         {
-            if(currentTime - lastTimeSim >= 1.0/ targetFrameRateSim)
-            {
-                glUseProgram(computeProgram);
-                glDispatchCompute(ceil(width / 8), ceil(height / 4), 1);
-                glMemoryBarrier(GL_ALL_BARRIER_BITS);
+            glUseProgram(computeProgram);
+            glDispatchCompute(ceil(width / 8), ceil(height / 4), 1);
+            glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-                glCopyImageSubData(screenTex,    GL_TEXTURE_2D, 0, 0, 0, 0,
+            glCopyImageSubData(screenTex,    GL_TEXTURE_2D, 0, 0, 0, 0,
                                screenTexOld, GL_TEXTURE_2D, 0, 0, 0, 0,
                                width, height, 1);
 
-                lastTimeSim = currentTime;
-            }
+            lastTimeSim = currentTime;
+        }
+
+        if(deltaTime >= 1.0 / targetFrameRate)
+        {
             glUseProgram(screenShaderProgram);
 
             glBindTextureUnit(0, screenTex);

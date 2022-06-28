@@ -28,14 +28,13 @@ void Camera::matrix(GLuint shader, const char* uniform)
 
 void Camera::update(GLFWwindow *window, const float& deltaTime) 
 { 
-    double mouseX;
-    double mouseY;
-    glfwGetCursorPos(window, &mouseX, &mouseY);   
-
     static bool pan_start = false;
     static bool zoom_start = false;
-
     static glm::vec2 mouse_start;
+
+    static double mouseX;
+    static double mouseY;
+    glfwGetCursorPos(window, &mouseX, &mouseY);   
 
     if (!pan_start && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) 
     {   
