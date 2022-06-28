@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
 #include <cassert>
+#include "Camera.h"
 
 const unsigned int SCREEN_WIDTH = 1024;
 const unsigned int SCREEN_HEIGHT = 1024;
@@ -13,14 +14,13 @@ const unsigned short OPENGL_MAJOR_VERSION = 4;
 const unsigned short OPENGL_MINOR_VERSION = 6;
 
 bool vSync = false;
-float targetFrameRate = 144.0f;
 
 GLfloat vertices[] =
 {
-	-1.0f, -1.0f , 0.0f, 0.0f, 0.0f,
-	-1.0f,  1.0f , 0.0f, 0.0f, 1.0f,
-	 1.0f,  1.0f , 0.0f, 1.0f, 1.0f,
-	 1.0f, -1.0f , 0.0f, 1.0f, 0.0f,
+	 0.0f,          0.0f,          0.0f, 0.0f, 0.0f,
+	 0.0f,          SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f,
+	 SCREEN_WIDTH,  SCREEN_HEIGHT, 0.0f, 1.0f, 1.0f,
+	 SCREEN_WIDTH,  0.0f,          0.0f, 1.0f, 0.0f,
 };
 
 GLuint indices[] =
@@ -34,11 +34,15 @@ const char* screenVertexShaderSource = R"(#version 460 core
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 uvs;
 out vec2 UVs;
+
+uniform mat4 u_ViewProj;
+
 void main()
 {
-	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+	gl_Position = u_ViewProj * vec4(pos.x, pos.y, pos.z, 1.0);
 	UVs = uvs;
 })";
+
 const char* screenFragmentShaderSource = R"(#version 460 core
 out vec4 FragColor;
 uniform sampler2D screen;
@@ -47,6 +51,7 @@ void main()
 {
 	FragColor = texture(screen, UVs);
 })";
+
 const char* screenComputeShaderSource = R"(#version 460 core
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 
@@ -96,7 +101,7 @@ int main()
 {
 	glfwInit();
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VERSION);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR_VERSION);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -138,23 +143,14 @@ int main()
 	glVertexArrayVertexBuffer(VAO, 0, VBO, 0, 5 * sizeof(GLfloat));
 	glVertexArrayElementBuffer(VAO, EBO);
 
-	GLuint screenTex;
-	glCreateTextures(GL_TEXTURE_2D, 1, &screenTex);
-	glTextureParameteri(screenTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(screenTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureStorage2D(screenTex, 1, GL_RGBA32F, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-
     GLuint screenTexOld;
     glGenTextures(1, &screenTexOld);
     glBindTexture(GL_TEXTURE_2D, screenTexOld);
     // set the texture wrapping/filtering options (on the currently bound texture object)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // load and generate the texture
     stbi_set_flip_vertically_on_load(true);
@@ -162,8 +158,6 @@ int main()
     unsigned char *data = stbi_load("glider_gun.png", &width, &height, &nrChannels, 0);
     if (data)
     {
-        assert(width == SCREEN_WIDTH);
-        assert(height == SCREEN_HEIGHT);
         assert(nrChannels == 3);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -175,6 +169,15 @@ int main()
     }
     stbi_image_free(data);
 	glBindImageTexture(1, screenTexOld, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+	GLuint screenTex;
+	glCreateTextures(GL_TEXTURE_2D, 1, &screenTex);
+	glTextureParameteri(screenTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(screenTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(screenTex, 1, GL_RGBA32F, width, height);
+	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 	GLuint screenVertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(screenVertexShader, 1, &screenVertexShaderSource, NULL);
@@ -221,18 +224,37 @@ int main()
 	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
 	std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
 
-    float lastTime = 0.0;
-    float currentTime = 0.0;
+    float lastTimeSim = 0.0f;
+    float lastTimeReal = 0.0f;
+    float currentTime = 0.0f;
+    float deltaTime = 0.0f;
+    float targetFrameRate = 144.0f;
+    float targetFrameRateSim = 30.0f;
+
+    Camera camera(0.0f, SCREEN_WIDTH, 0.0f, SCREEN_HEIGHT, -1.0f, 1.0f);
 
 	while (!glfwWindowShouldClose(window))
 	{
         currentTime = glfwGetTime();
-        if(currentTime - lastTime >= 1.0 / targetFrameRate)
-        {
-            glUseProgram(computeProgram);
-            glDispatchCompute(ceil(SCREEN_WIDTH / 8), ceil(SCREEN_HEIGHT / 4), 1);
-            glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        deltaTime = currentTime - lastTimeReal;
 
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        if(deltaTime >= 1.0 / targetFrameRate)
+        {
+            if(currentTime - lastTimeSim >= 1.0/ targetFrameRateSim)
+            {
+                glUseProgram(computeProgram);
+                glDispatchCompute(ceil(width / 8), ceil(height / 4), 1);
+                glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+                glCopyImageSubData(screenTex,    GL_TEXTURE_2D, 0, 0, 0, 0,
+                               screenTexOld, GL_TEXTURE_2D, 0, 0, 0, 0,
+                               width, height, 1);
+
+                lastTimeSim = currentTime;
+            }
             glUseProgram(screenShaderProgram);
 
             glBindTextureUnit(0, screenTex);
@@ -242,12 +264,12 @@ int main()
             glBindVertexArray(VAO);
             glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 
-            glCopyImageSubData(screenTex,    GL_TEXTURE_2D, 0, 0, 0, 0,
-                               screenTexOld, GL_TEXTURE_2D, 0, 0, 0, 0,
-                               SCREEN_WIDTH, SCREEN_HEIGHT, 1);
-            lastTime = currentTime;
 		    glfwSwapBuffers(window);
+            lastTimeReal = currentTime;
         }
+
+        camera.update(window, deltaTime);
+        camera.matrix(screenShaderProgram, "u_ViewProj");
 		glfwPollEvents();
 	}
 
