@@ -106,7 +106,9 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGL Game Of Life", NULL, NULL);
+    std::string title = "OpenGL Game Of Life";
+	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, title.c_str(), NULL, NULL);
+
 	if (!window)
 	{
 		std::cout << "Failed to create the GLFW window\n";
@@ -228,7 +230,10 @@ int main()
     float lastTimeReal = 0.0f;
     float currentTime = 0.0f;
     float deltaTime = 0.0f;
+    float lastFrameCounter = 0.0f;
+    float timeDiffCounter = 0.0f;
     float targetFrameRateSim = 25.0f;
+    float counter = 0.0f;
 
     Camera camera(0.0f, SCREEN_WIDTH, 0.0f, SCREEN_HEIGHT, -1.0f, 1.0f);
 
@@ -236,6 +241,17 @@ int main()
 	{
         currentTime = glfwGetTime();
         deltaTime = currentTime - lastTimeReal;
+        timeDiffCounter = currentTime - lastFrameCounter;
+        counter++;
+
+        if (timeDiffCounter >= 1.0f / 30.0f) {
+            std::string FPS = std::to_string((1.0 / timeDiffCounter) * counter);
+            std::string ms = std::to_string((timeDiffCounter / counter) * 1000);
+            std::string newTitle = title + " | " + FPS + " FPS | " + ms + " ms";
+            glfwSetWindowTitle(window, newTitle.c_str());
+            lastFrameCounter = currentTime;
+            counter = 0;  
+		}
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f );
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -266,9 +282,9 @@ int main()
         glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
-        lastTimeReal = currentTime;
-
 		glfwPollEvents();
+
+        lastTimeReal = currentTime;
 	}
 
 	glfwDestroyWindow(window);
